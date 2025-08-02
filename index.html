@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKC去重与筛选工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+            min-width: 120px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: #2196F3;
+        }
+        button.secondary:hover {
+            background-color: #0b7dda;
+        }
+        button.warning {
+            background-color: #ff9800;
+        }
+        button.warning:hover {
+            background-color: #e68a00;
+        }
+        button.danger {
+            background-color: #f44336;
+        }
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+        button.info {
+            background-color: #607d8b;
+        }
+        button.info:hover {
+            background-color: #455a64;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .duplicate {
+            background-color: #ffcccc;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .unique {
+            color: #666;
+        }
+        .summary {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .result-section {
+            margin-bottom: 20px;
+        }
+        .copy-btn {
+            background-color: #9e9e9e;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .copy-btn:hover {
+            background-color: #757575;
+        }
+        .option-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        label {
+            margin-right: 10px;
+        }
+        select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .skc-group {
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: white;
+        }
+        .skc-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            color: #333;
+        }
+        .skc-id-list {
+            margin-left: 20px;
+            padding: 8px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+        }
+        .copy-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .copy-buttons button {
+            flex: none;
+            min-width: auto;
+            padding: 8px 12px;
+        }
+        .search-highlight {
+            background-color: #ffff99;
+            font-weight: bold;
+        }
+        .search-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SKC去重与筛选工具</h1>
+    <p>在下方输入SKC数据，每行一个（格式：SKCID [制表符或空格] SKC货号）</p>
+    
+    <textarea id="inputData" placeholder="例如：
+37526731088 D0102HQ4KE7[db]
+41418641825 D0102HQ4KE7[db]
+40259821268 D0102HQRP67[db]
+..."></textarea>
+    
+    <div class="option-group">
+        <label for="caseSensitive">大小写敏感：</label>
+        <select id="caseSensitive">
+            <option value="no">不敏感</option>
+            <option value="yes">敏感</option>
+        </select>
+        
+        <label for="keepOption" style="margin-left: 15px;">去重选项：</label>
+        <select id="keepOption">
+            <option value="first">保留第一个</option>
+            <option value="last">保留最后一个</option>
+            <option value="max">保留最大SKCID</option>
+            <option value="min">保留最小SKCID</option>
+        </select>
+    </div>
+    
+    <div class="search-section">
+        <h3>查找数据</h3>
+        <div>
+            <input type="text" id="searchTerm" placeholder="输入SKCID或SKC货号">
+            <button class="info" onclick="searchData()">查找</button>
+            <label style="margin-left: 10px;">
+                <input type="checkbox" id="searchWholeWord"> 全词匹配
+            </label>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="findDuplicates()">查找重复SKC</button>
+        <button class="secondary" onclick="showUnique()">显示唯一SKC</button>
+        <button class="warning" onclick="showRemovedData()">显示被过滤数据</button>
+        <button class="danger" onclick="showAllDuplicateSKCIDs()">所有重复SKCID</button>
+        <button onclick="deduplicate()">全部去重处理</button>
+        <button onclick="clearAll()">清空</button>
+    </div>
+    
+    <div id="result">
+        <p>结果将显示在这里...</p>
+    </div>
+    
+    <script>
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('已复制到剪贴板');
+        }
+        
+        function parseSKCData() {
+            const inputText = document.getElementById('inputData').value;
+            const lines = inputText.split('\n').filter(line => line.trim() !== '');
+            const caseSensitive = document.getElementById('caseSensitive').value === 'yes';
+            
+            const skcEntries = [];
+            const skcMap = {};
+            
+            lines.forEach((line, index) => {
+                // 分割SKCID和SKC货号
+                const parts = line.split(/\t|\s{2,}/); // 制表符或多个空格分隔
+                let skcId, skcCode;
+                
+                if (parts.length >= 2) {
+                    skcId = parts[0].trim();
+                    skcCode = parts[1].trim();
+                } else {
+                    // 如果分隔失败，尝试用第一个空格分割
+                    const firstSpace = line.indexOf(' ');
+                    if (firstSpace > 0) {
+                        skcId = line.substring(0, firstSpace).trim();
+                        skcCode = line.substring(firstSpace).trim();
+                    } else {
+                        // 如果还是失败，整行作为SKC Code
+                        skcId = '';
+                        skcCode = line.trim();
+                    }
+                }
+                
+                const key = caseSensitive ? skcCode : skcCode.toLowerCase();
+                const entry = { skcId, skcCode, originalLine: line, lineNumber: index + 1 };
+                
+                skcEntries.push(entry);
+                
+                if (!skcMap[key]) {
+                    skcMap[key] = [];
+                }
+                
+                skcMap[key].push(entry);
+            });
+            
+            // 找出重复的SKC
+            const duplicates = {};
+            for (const [key, entries] of Object.entries(skcMap)) {
+                if (entries.length > 1) {
+                    duplicates[key] = entries;
+                }
+            }
+            
+            return {
+                skcEntries,
+                skcMap,
+                duplicates,
+                hasDuplicates: Object.keys(duplicates).length > 0,
+                totalLines: lines.length,
+                uniqueCount: Object.keys(skcMap).length
+            };
+        }
+        
+        function searchData() {
+            const searchTerm = document.getElementById('searchTerm').value.trim();
+            if (!searchTerm) {
+                alert('请输入搜索内容');
+                return;
+            }
+            
+            const { skcEntries } = parseSKCData();
+            const caseSensitive = document.getElementById('caseSensitive').value === 'yes';
+            const wholeWord = document.getElementById('searchWholeWord').checked;
+            
+            let regex;
+            if (wholeWord) {
+                regex = caseSensitive 
+                    ? new RegExp(`\\b${escapeRegExp(searchTerm)}\\b`)
+                    : new RegExp(`\\b${escapeRegExp(searchTerm)}\\b`, 'i');
+            } else {
+                regex = caseSensitive 
+                    ? new RegExp(escapeRegExp(searchTerm))
+                    : new RegExp(escapeRegExp(searchTerm), 'i');
+            }
+            
+            const matchedEntries = skcEntries.filter(entry => {
+                return regex.test(entry.skcId) || regex.test(entry.skcCode);
+            });
+            
+            if (matchedEntries.length === 0) {
+                document.getElementById('result').innerHTML = `<p>没有找到包含 "${searchTerm}" 的数据。</p>`;
+                return;
+            }
+            
+            // 高亮显示匹配内容
+            const highlightedEntries = matchedEntries.map(entry => {
+                let line = entry.originalLine;
+                // 高亮SKCID部分
+                if (regex.test(entry.skcId)) {
+                    line = line.replace(
+                        new RegExp(escapeRegExp(entry.skcId), caseSensitive ? 'g' : 'gi'), 
+                        match => `<span class="search-highlight">${match}</span>`
+                    );
+                }
+                // 高亮SKC Code部分
+                if (regex.test(entry.skcCode)) {
+                    line = line.replace(
+                        new RegExp(escapeRegExp(entry.skcCode), caseSensitive ? 'g' : 'gi'), 
+                        match => `<span class="search-highlight">${match}</span>`
+                    );
+                }
+                return { ...entry, highlightedLine: line };
+            });
+            
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">找到 ${matchedEntries.length} 条包含 "${searchTerm}" 的数据：</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>行号</th>
+                                <th>SKCID</th>
+                                <th>SKC货号</th>
+                                <th>完整行</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${highlightedEntries.map(entry => `
+                                <tr>
+                                    <td>${entry.lineNumber}</td>
+                                    <td>${entry.skcId}</td>
+                                    <td>${entry.skcCode}</td>
+                                    <td>${entry.highlightedLine}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="copy-buttons">
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(matchedEntries.map(e => e.originalLine).join('\n'))}')">复制全部数据</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(matchedEntries.map(e => e.skcId).join('\n'))}')">只复制SKCID</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('result').innerHTML = resultHTML;
+        }
+        
+        function findDuplicates() {
+            const { skcEntries, duplicates, hasDuplicates } = parseSKCData();
+            const resultDiv = document.getElementById('result');
+            
+            if (!hasDuplicates) {
+                resultDiv.innerHTML = '<p>没有找到重复的SKC。</p>';
+                return;
+            }
+            
+            // 显示重复值统计
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">重复SKC统计（共 ${Object.keys(duplicates).length} 种重复SKC）：</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>SKC货号</th>
+                                <th>重复次数</th>
+                                <th>行号</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(duplicates).map(([key, entries]) => {
+                                const skcIds = new Set(entries.map(e => e.skcId));
+                                return `
+                                    <tr>
+                                        <td>${entries[0].skcCode}</td>
+                                        <td>${entries.length}</td>
+                                        <td>${entries.map(e => e.lineNumber).join(', ')}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="result-section">
+                    <div class="summary">原始输入（重复SKC已高亮）：</div>
+                    <div>
+                        ${skcEntries.map(entry => {
+                            const key = document.getElementById('caseSensitive').value === 'yes' 
+                                ? entry.skcCode 
+                                : entry.skcCode.toLowerCase();
+                            if (duplicates[key]) {
+                                return `<span class="duplicate" title="重复 ${duplicates[key].length} 次">${entry.originalLine}</span><br>`;
+                            } else {
+                                return `<span class="unique">${entry.originalLine}</span><br>`;
+                            }
+                        }).join('')}
+                    </div>
+                    <div class="copy-buttons">
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(skcEntries.map(e => e.originalLine).join('\n'))}')">复制全部数据</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(skcEntries.map(e => e.skcId).join('\n'))}')">只复制SKCID</button>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = resultHTML;
+        }
+        
+        function showUnique() {
+            const { skcEntries, skcMap, duplicates } = parseSKCData();
+            
+            // 普通去重逻辑下的唯一SKC
+            const uniqueEntries = skcEntries.filter(entry => {
+                const key = document.getElementById('caseSensitive').value === 'yes' 
+                    ? entry.skcCode 
+                    : entry.skcCode.toLowerCase();
+                return skcMap[key].length === 1;
+            });
+            
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">唯一SKC（不重复的值，共 ${uniqueEntries.length} 个）：</div>
+                    <div>
+                        ${uniqueEntries.map(e => e.originalLine).join('<br>') || '无'}
+                    </div>
+                    <div class="copy-buttons">
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(uniqueEntries.map(e => e.originalLine).join('\n'))}')">复制全部数据</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(uniqueEntries.map(e => e.skcId).join('\n'))}')">只复制SKCID</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('result').innerHTML = resultHTML;
+        }
+        
+        function showRemovedData() {
+            const { skcEntries, duplicates } = parseSKCData();
+            const keepOption = document.getElementById('keepOption').value;
+            
+            if (!Object.keys(duplicates).length) {
+                document.getElementById('result').innerHTML = '<p>没有重复数据，因此没有被过滤的数据。</p>';
+                return;
+            }
+            
+            // 获取保留的数据
+            const keptEntries = getKeptEntries(skcEntries, duplicates, keepOption);
+            const keptSet = new Set(keptEntries.map(e => e.originalLine));
+            
+            // 被过滤的数据就是不在保留集中的数据
+            const removedEntries = skcEntries.filter(e => !keptSet.has(e.originalLine));
+            
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">被过滤的数据（共 ${removedEntries.length} 条）：</div>
+                    <div>
+                        ${removedEntries.map(e => e.originalLine).join('<br>') || '无'}
+                    </div>
+                    <div class="copy-buttons">
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(removedEntries.map(e => e.originalLine).join('\n'))}')">复制全部数据</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(removedEntries.map(e => e.skcId).join('\n'))}')">只复制SKCID</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('result').innerHTML = resultHTML;
+        }
+        
+        function showAllDuplicateSKCIDs() {
+            const { duplicates } = parseSKCData();
+            
+            if (!Object.keys(duplicates).length) {
+                document.getElementById('result').innerHTML = '<p>没有重复数据。</p>';
+                return;
+            }
+            
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">所有重复SKCID（共 ${Object.keys(duplicates).length} 种重复SKC）：</div>
+            `;
+            
+            for (const [key, entries] of Object.entries(duplicates)) {
+                // 按SKCID分组
+                const skcIdGroups = {};
+                entries.forEach(entry => {
+                    if (!skcIdGroups[entry.skcId]) {
+                        skcIdGroups[entry.skcId] = [];
+                    }
+                    skcIdGroups[entry.skcId].push(entry);
+                });
+                
+                resultHTML += `
+                    <div class="skc-group">
+                        <div class="skc-header">
+                            <span>SKC货号: ${entries[0].skcCode}</span>
+                            <span>重复总数: ${entries.length}</span>
+                        </div>
+                        ${Object.entries(skcIdGroups).map(([skcId, groupEntries]) => `
+                            <div>
+                                <div>SKCID: ${skcId} (${groupEntries.length} 次)</div>
+                                <div class="skc-id-list">
+                                    ${groupEntries.map(e => `行 ${e.lineNumber}: ${e.originalLine}`).join('<br>')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            resultHTML += `</div>`;
+            document.getElementById('result').innerHTML = resultHTML;
+        }
+        
+        function getKeptEntries(allEntries, duplicates, keepOption) {
+            const keptEntries = [];
+            const caseSensitive = document.getElementById('caseSensitive').value === 'yes';
+            
+            // 处理非重复数据
+            allEntries.forEach(entry => {
+                const key = caseSensitive ? entry.skcCode : entry.skcCode.toLowerCase();
+                if (!duplicates[key]) {
+                    keptEntries.push(entry);
+                }
+            });
+            
+            // 处理重复数据
+            for (const [key, entries] of Object.entries(duplicates)) {
+                let keptEntry;
+                if (keepOption === 'first') {
+                    keptEntry = entries[0];
+                } else if (keepOption === 'last') {
+                    keptEntry = entries[entries.length - 1];
+                } else if (keepOption === 'max') {
+                    keptEntry = entries.reduce((max, entry) => 
+                        entry.skcId > max.skcId ? entry : max, entries[0]);
+                } else if (keepOption === 'min') {
+                    keptEntry = entries.reduce((min, entry) => 
+                        entry.skcId < min.skcId ? entry : min, entries[0]);
+                }
+                keptEntries.push(keptEntry);
+            }
+            
+            return keptEntries;
+        }
+        
+        function deduplicate() {
+            const { skcEntries, duplicates } = parseSKCData();
+            const keepOption = document.getElementById('keepOption').value;
+            
+            if (!Object.keys(duplicates).length) {
+                document.getElementById('result').innerHTML = '<p>没有重复数据，无需去重。</p>';
+                return;
+            }
+            
+            // 获取保留的数据
+            const keptEntries = getKeptEntries(skcEntries, duplicates, keepOption);
+            
+            let resultHTML = `
+                <div class="result-section">
+                    <div class="summary">去重后的数据（共 ${keptEntries.length} 条）：</div>
+                    <div>
+                        ${keptEntries.map(e => e.originalLine).join('<br>')}
+                    </div>
+                    <div class="copy-buttons">
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(keptEntries.map(e => e.originalLine).join('\n'))}')">复制全部数据</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(keptEntries.map(e => e.skcId).join('\n'))}')">只复制SKCID</button>
+                    </div>
+                </div>
+                <div class="result-section">
+                    <div class="summary">去重统计：</div>
+                    <ul>
+                        <li>原始数据行数: ${skcEntries.length}</li>
+                        <li>去重后行数: ${keptEntries.length}</li>
+                        <li>移除的行数: ${skcEntries.length - keptEntries.length}</li>
+                        <li>重复SKC种类数: ${Object.keys(duplicates).length}</li>
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('result').innerHTML = resultHTML;
+        }
+        
+        function clearAll() {
+            document.getElementById('inputData').value = '';
+            document.getElementById('result').innerHTML = '<p>结果将显示在这里...</p>';
+            document.getElementById('searchTerm').value = '';
+        }
+    </script>
+</body>
+</html>
